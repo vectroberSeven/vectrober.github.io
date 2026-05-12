@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pocket Control — Finanzas Personales</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <!-- QR Code generator (sin backend, puro JS) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+
+  <!-- ──────────────────────────────────────────────── -->
+  <!-- APP PRINCIPAL                                   -->
+  <!-- ──────────────────────────────────────────────── -->
+  <div id="app">
+
+    <!-- SIDEBAR -->
+    <aside id="sidebar">
+      <div class="sidebar-logo">
+        <span class="logo-mark">◈</span>
+        <span class="logo-text">Pocket<strong>Control</strong></span>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a class="nav-item active" data-view="dashboard">
+          <span class="nav-icon">⬡</span> Dashboard
+        </a>
+        <a class="nav-item" data-view="transactions">
+          <span class="nav-icon">⇅</span> Transacciones
+        </a>
+        <a class="nav-item" data-view="categories">
+          <span class="nav-icon">◻</span> Categorías
+        </a>
+        <a class="nav-item" data-view="reports">
+          <span class="nav-icon">◫</span> Reportes
+        </a>
+        <a class="nav-item" data-view="reminders">
+          <span class="nav-icon">◷</span> Recordatorios
+        </a>
+        <a class="nav-item" data-view="invoices">
+          <span class="nav-icon">◈</span> Facturación
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-chip">
+          <div class="user-avatar" id="sidebar-avatar">U</div>
+          <span id="sidebar-name">Usuario</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- HAMBURGER (mobile) -->
+    <button id="hamburger" class="hamburger">☰</button>
+    <div id="sidebar-overlay" class="sidebar-overlay"></div>
+
+    <!-- MAIN CONTENT -->
+    <main id="main">
+
+      <!-- ── DASHBOARD ── -->
+      <section id="view-dashboard" class="view active">
+        <header class="view-header">
+          <div>
+            <h2 class="view-title">Dashboard</h2>
+            <p class="view-sub" id="dash-greeting">Hola, Usuario</p>
+          </div>
+          <div class="header-date" id="header-date"></div>
+          <div id="last-refreshed" class="last-refreshed"></div>
+        </header>
+
+        <!-- Balance cards -->
+        <div class="stats-grid">
+          <div class="stat-card balance">
+            <div class="stat-label">Balance Total</div>
+            <div class="stat-amount" id="stat-balance">$0.00</div>
+            <div class="stat-trend" id="stat-balance-trend"></div>
+          </div>
+          <div class="stat-card income">
+            <div class="stat-icon">↑</div>
+            <div class="stat-label">Ingresos</div>
+            <div class="stat-amount" id="stat-income">$0.00</div>
+          </div>
+          <div class="stat-card expense">
+            <div class="stat-icon">↓</div>
+            <div class="stat-label">Egresos</div>
+            <div class="stat-amount" id="stat-expense">$0.00</div>
+          </div>
+        </div>
+
+        <!-- Recent transactions -->
+        <div class="card">
+          <div class="card-header">
+            <h3>Transacciones Recientes</h3>
+            <a class="link-sm" data-view="transactions">Ver todas →</a>
+          </div>
+          <div id="recent-transactions" class="tx-list">
+            <div class="empty-state">Cargando…</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── TRANSACTIONS ── -->
+      <section id="view-transactions" class="view">
+        <header class="view-header">
+          <div>
+            <h2 class="view-title">Transacciones</h2>
+            <p class="view-sub">Registra y gestiona tus movimientos</p>
+          </div>
+          <button class="btn btn-primary btn-sm" id="btn-show-tx-form">+ Nueva</button>
+        </header>
+
+        <!-- Add/Edit form -->
+        <div class="card collapsible" id="tx-form-card">
+          <div class="card-header">
+            <h3 id="tx-form-title">Nueva Transacción</h3>
+            <button class="btn-icon" id="btn-close-tx-form">✕</button>
+          </div>
+
+          <!-- PASO 1: Tipo -->
+          <div class="form-group">
+            <label>¿Es un ingreso o un egreso?</label>
+            <div class="radio-group big">
+              <label class="radio-btn">
+                <input type="radio" name="tx-type" value="ingreso" id="tx-type-ingreso" />
+                <span>💰 Ingreso</span>
+              </label>
+              <label class="radio-btn">
+                <input type="radio" name="tx-type" value="egreso" id="tx-type-egreso" checked />
+                <span>💸 Egreso</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- PASO 2: Categoría (se actualiza según tipo) -->
+          <div class="form-group">
+            <label for="tx-category">¿En qué se está gastando / origen?</label>
+            <div id="tx-category-pills" class="cat-pills-select"></div>
+            <input type="hidden" id="tx-category" />
+          </div>
+
+          <div class="form-grid">
+            <!-- PASO 3: Monto -->
+            <div class="form-group">
+              <label for="tx-amount">Monto ($)</label>
+              <input id="tx-amount" type="number" placeholder="0.00" step="0.01" min="0" />
+            </div>
+            <!-- PASO 4: Fecha -->
+            <div class="form-group">
+              <label for="tx-date">Fecha</label>
+              <input id="tx-date" type="date" />
+            </div>
+            <!-- PASO 5: Descripción -->
+            <div class="form-group span-2">
+              <label for="tx-description">Descripción (opcional)</label>
+              <input id="tx-description" type="text" placeholder="Ej: Supermercado Walmart, pago de renta..." />
+            </div>
+          </div>
+
+          <input type="hidden" id="tx-edit-id" value="" />
+          <div class="form-actions">
+            <button class="btn btn-ghost" id="btn-cancel-tx">Cancelar</button>
+            <button class="btn btn-primary" id="btn-save-tx">Guardar transacción</button>
+          </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="filter-bar">
+          <input type="text" id="tx-search" placeholder="🔍 Buscar..." class="filter-input" />
+          <select id="tx-filter-type" class="filter-select">
+            <option value="">Todos</option>
+            <option value="ingreso">Ingresos</option>
+            <option value="egreso">Egresos</option>
+          </select>
+        </div>
+
+        <div id="transactions-list" class="tx-list card">
+          <div class="empty-state">Cargando…</div>
+        </div>
+      </section>
+
+      <!-- ── CATEGORIES ── -->
+      <section id="view-categories" class="view">
+        <header class="view-header">
+          <div>
+            <h2 class="view-title">Categorías</h2>
+            <p class="view-sub">Organización de tus movimientos</p>
+          </div>
+        </header>
+
+        <div class="categories-grid">
+          <div class="card cat-section">
+            <div class="card-header">
+              <h3><span class="badge badge-income">↑</span> Ingresos</h3>
+            </div>
+            <div id="cat-income" class="cat-list">
+              <div class="empty-state">Cargando…</div>
+            </div>
+          </div>
+          <div class="card cat-section">
+            <div class="card-header">
+              <h3><span class="badge badge-expense">↓</span> Egresos</h3>
+            </div>
+            <div id="cat-expense" class="cat-list">
+              <div class="empty-state">Cargando…</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── REPORTS ── -->
+      <section id="view-reports" class="view">
+        <header class="view-header">
+          <div>
+            <h2 class="view-title">Reportes</h2>
+            <p class="view-sub">Visualiza tus patrones financieros</p>
+          </div>
+        </header>
+
+        <div class="reports-grid">
+          <div class="card">
+            <div class="card-header">
+              <h3>Resumen Mensual</h3>
+              <span class="chip">Últimos 6 meses</span>
+            </div>
+            <div id="monthly-chart" class="chart-area"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3>Gastos por Categoría</h3>
+              <span class="chip">Mes actual</span>
+            </div>
+            <div id="category-chart" class="category-bars"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── REMINDERS ── -->
+      <section id="view-reminders" class="view">
+        <header class="view-header">
+          <div>
+            <h2 class="view-title">Recordatorios</h2>
+            <p class="view-sub">Pagos y vencimientos pendientes</p>
+          </div>
+          <button class="btn btn-primary btn-sm" id="btn-show-rem-form">+ Nuevo</button>
+        </header>
+
+        <!-- Add reminder form -->
+        <div class="card collapsible" id="rem-form-card">
+          <div class="card-header">
+            <h3>Nuevo Recordatorio</h3>
+            <button class="btn-icon" id="btn-close-rem-form">✕</button>
+          </div>
+          <div class="form-grid">
+            <div class="form-group span-2">
+              <label for="rem-title">Título</label>
+              <input id="rem-title" type="text" placeholder="Ej: Renta, Netflix, Seguro..." />
+            </div>
+            <div class="form-group">
+              <label for="rem-amount">Monto</label>
+              <input id="rem-amount" type="number" placeholder="0.00" step="0.01" min="0" />
+            </div>
+            <div class="form-group">
+              <label for="rem-category">Categoría</label>
+              <select id="rem-category"></select>
+            </div>
+            <div class="form-group">
+              <label for="rem-due">Fecha de vencimiento</label>
+              <input id="rem-due" type="date" />
+            </div>
+            <div class="form-group">
+              <label for="rem-days">Recordar con (días de anticipación)</label>
+              <input id="rem-days" type="number" value="3" min="1" max="30" />
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-ghost" id="btn-cancel-rem">Cancelar</button>
+            <button class="btn btn-primary" id="btn-save-rem">Guardar</button>
+          </div>
+        </div>
+
+        <div id="reminders-list" class="reminders-list">
+          <div class="empty-state">Cargando…</div>
+        </div>
+      </section>
+
+      <!-- ── INVOICES ── -->
+      <section id="view-invoices" class="view">
+        <header class="view-header">
+          <div>
+            <h2 class="view-title">Facturación</h2>
+            <p class="view-sub">Comprobantes de tus transacciones</p>
+          </div>
+          <button class="btn btn-primary btn-sm" id="btn-new-invoice">+ Nuevo Comprobante</button>
+        </header>
+
+        <!-- Modal de configuración de comprobante -->
+        <div id="invoice-modal-overlay" class="invoice-modal-overlay hidden">
+          <div class="invoice-modal">
+            <div class="invoice-modal-header">
+              <h3>Generar Comprobante</h3>
+              <button class="btn-icon" id="btn-close-invoice-modal">✕</button>
+            </div>
+            <div class="invoice-modal-body">
+
+              <!-- Selección de transacción -->
+              <div class="form-group">
+                <label for="inv-tx-select">Transacción asociada</label>
+                <select id="inv-tx-select">
+                  <option value="">— Selecciona una transacción —</option>
+                </select>
+              </div>
+
+              <div class="inv-two-col">
+                <!-- EMISOR -->
+                <fieldset class="inv-fieldset">
+                  <legend>1 · Datos del Emisor (quien vende)</legend>
+                  <div class="form-group">
+                    <label for="inv-em-nombre">Nombre / Razón Social</label>
+                    <input id="inv-em-nombre" type="text" placeholder="Tu nombre o empresa" />
+                  </div>
+                  <div class="form-group">
+                    <label for="inv-em-rfc">RFC / ID Fiscal</label>
+                    <input id="inv-em-rfc" type="text" placeholder="XAXX010101000" />
+                  </div>
+                  <div class="form-group">
+                    <label for="inv-em-dir">Dirección</label>
+                    <input id="inv-em-dir" type="text" placeholder="Calle, Núm, Ciudad" />
+                  </div>
+                  <div class="form-group">
+                    <label for="inv-em-email">Email</label>
+                    <input id="inv-em-email" type="email" placeholder="correo@ejemplo.com" />
+                  </div>
+                </fieldset>
+
+                <!-- RECEPTOR -->
+                <fieldset class="inv-fieldset">
+                  <legend>2 · Datos del Receptor (quien compra)</legend>
+                  <div class="form-group">
+                    <label for="inv-rec-nombre">Nombre / Razón Social</label>
+                    <input id="inv-rec-nombre" type="text" placeholder="Cliente o proveedor" />
+                  </div>
+                  <div class="form-group">
+                    <label for="inv-rec-rfc">RFC / ID Fiscal</label>
+                    <input id="inv-rec-rfc" type="text" placeholder="XAXX010101000" />
+                  </div>
+                  <div class="form-group">
+                    <label for="inv-rec-dir">Dirección</label>
+                    <input id="inv-rec-dir" type="text" placeholder="Calle, Núm, Ciudad" />
+                  </div>
+                  <div class="form-group">
+                    <label for="inv-rec-email">Email</label>
+                    <input id="inv-rec-email" type="email" placeholder="correo@ejemplo.com" />
+                  </div>
+                </fieldset>
+              </div>
+
+              <!-- Detalle del servicio/producto -->
+              <fieldset class="inv-fieldset">
+                <legend>5–6 · Descripción, Cantidad y Precio Unitario</legend>
+                <div id="inv-items-container">
+                  <div class="inv-item-row">
+                    <input class="inv-desc" type="text" placeholder="Descripción del producto / servicio" />
+                    <input class="inv-qty"  type="number" placeholder="Cant." min="1" value="1" />
+                    <input class="inv-price" type="number" placeholder="Precio unit." min="0" step="0.01" />
+                    <button class="btn-icon inv-remove-item" title="Eliminar">✕</button>
+                  </div>
+                </div>
+                <button class="btn btn-ghost btn-sm" id="btn-add-inv-item" style="margin-top:8px">+ Agregar línea</button>
+              </fieldset>
+
+              <!-- IVA y pago -->
+              <div class="inv-two-col" style="margin-top:4px">
+                <div class="form-group">
+                  <label for="inv-iva">IVA (%)</label>
+                  <input id="inv-iva" type="number" value="16" min="0" max="100" />
+                </div>
+                <div class="form-group">
+                  <label for="inv-payment">Forma de Pago</label>
+                  <select id="inv-payment">
+                    <option value="Efectivo">Efectivo</option>
+                    <option value="Transferencia Bancaria">Transferencia Bancaria</option>
+                    <option value="Tarjeta de Crédito">Tarjeta de Crédito</option>
+                    <option value="Tarjeta de Débito">Tarjeta de Débito</option>
+                    <option value="Cheque">Cheque</option>
+                    <option value="Otro">Otro</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="inv-firma">Firma / Sello (texto o leyenda)</label>
+                <input id="inv-firma" type="text" placeholder="Ej: Firma autorizada — PocketControl S.A." />
+              </div>
+
+            </div>
+            <div class="invoice-modal-footer">
+              <button class="btn btn-ghost" id="btn-cancel-invoice">Cancelar</button>
+              <button class="btn btn-primary btn-sm" id="btn-generate-invoice">Generar Comprobante ◈</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Lista de comprobantes -->
+        <div id="invoices-list" class="invoices-list">
+          <div class="empty-state">No hay comprobantes generados aún.</div>
+        </div>
+      </section>
+
+      <!-- ── INVOICE VIEWER (pantalla completa del comprobante) ── -->
+      <div id="invoice-viewer-overlay" class="invoice-modal-overlay hidden">
+        <div class="invoice-viewer">
+          <div class="invoice-viewer-toolbar">
+            <span class="invoice-viewer-folio" id="viewer-folio-label"></span>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-ghost btn-sm" id="btn-print-invoice">🖨 Imprimir</button>
+              <button class="btn-icon" id="btn-close-viewer">✕</button>
+            </div>
+          </div>
+          <div id="invoice-print-area" class="invoice-print-area">
+            <!-- Se rellena dinámicamente -->
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Contenedor oculto para renderizar QR antes de insertar en factura -->
+  <div id="qr-hidden-container" style="position:absolute;left:-9999px;top:-9999px;"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
